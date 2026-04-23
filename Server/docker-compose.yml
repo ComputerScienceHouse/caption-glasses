@@ -1,0 +1,16 @@
+---
+
+services:
+  jumpstart:
+    build: 
+      context: .
+      dockerfile: Containerfile
+    container_name: CaptionGlasses
+    ports:
+      - "2001:2001"
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+      - PHRASE_TIMEOUT=${PHRASE_TIMEOUT}
+      - MAX_DURATION=${MAX_DURATION}
+      - VAD_THRESHOLD=${VAD_THRESHOLD}
+

@@ -1,0 +1,6 @@
+zensical==0.0.24
+mkdocstrings
+mkdocstrings-python
+mkdocs-minify-plugin
+mkdocs-git-revision-date-localized-plugin
+pymdown-extensions
