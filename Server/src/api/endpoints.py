@@ -1,10 +1,10 @@
 import uuid
 
 from logging import getLogger, Logger
-
 from fastapi import APIRouter, WebSocket
-
 import time
+
+from starlette.websockets import WebSocketDisconnect
 
 from core import processing
 
@@ -33,8 +33,9 @@ async def websocket_endpoint(websocket: WebSocket):
             await processing.process_websocket_bytes(
                 raw_bytes=raw_bytes, websocket=websocket
             )
-
-    except Exception as e:
+    except WebSocketDisconnect as e:
         logger.info(
             f"Disconnected with Client {generated_uuid} at %s", time.monotonic()
         )
+    except Exception as e:
+        logger.error(f"Error: {type(e).__name__}: {e}")

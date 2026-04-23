@@ -36,7 +36,12 @@ chunk_counter: int = 0
 loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
 
 
-async def process_audio_task(websocket: WebSocket, audio_data: np.ndarray, speaker_at_capture: str, is_final: bool = True) -> None:
+async def process_audio_task(
+    websocket: WebSocket,
+    audio_data: np.ndarray,
+    speaker_at_capture: str,
+    is_final: bool = True,
+) -> None:
     """
     Processes the audio chunk for text, making sure to lock required threads as necessary.
     Sends the transcibed text back through the inputted websocket
@@ -71,11 +76,12 @@ async def process_audio_task(websocket: WebSocket, audio_data: np.ndarray, speak
             is_transcribing = False
 
 
-async def procees_speaking(audio_chunk: np.ndarray) -> None:
+async def procees_speaking(websocket: WebSocket, audio_chunk: np.ndarray) -> None:
     """
     Processes the audio chunk as a portion of dialogue
 
     Arguments:
+        websocket (Websocket): The websocket connection of the speaking
         audio_chunk (np.ndarray): The audio chunk to be processed as a portion of silence
     """
     global is_speaking, utterance_start_time, voiced_buffer, silence_counter, pre_roll
@@ -92,6 +98,7 @@ async def procees_speaking(audio_chunk: np.ndarray) -> None:
         speaker_snapshot: str = diarization.get_speaker_at(utterance_start_time)
         asyncio.create_task(
             process_audio_task(
+                websocket,
                 np.concatenate(voiced_buffer),
                 speaker_snapshot,
                 is_final=False,
@@ -103,6 +110,7 @@ async def procees_speaking(audio_chunk: np.ndarray) -> None:
         speaker_snapshot: str = diarization.get_speaker_at(utterance_start_time)
         asyncio.create_task(
             process_audio_task(
+                websocket,
                 np.concatenate(voiced_buffer),
                 speaker_snapshot,
                 is_final=True,
@@ -113,11 +121,12 @@ async def procees_speaking(audio_chunk: np.ndarray) -> None:
         pre_roll.clear()
 
 
-async def process_silence(audio_chunk: np.ndarray) -> None:
+async def process_silence(websocket: WebSocket, audio_chunk: np.ndarray) -> None:
     """
     Processes the audio chunk as a silence chunk
 
     Arguments:
+        websocket (Websocket): The websocket connection of the speaking
         audio_chunk (np.ndarray): The audio chunk to be processed as a portion of silence
     """
     global is_speaking, utterance_start_time, voiced_buffer, silence_counter, pre_roll
@@ -131,6 +140,7 @@ async def process_silence(audio_chunk: np.ndarray) -> None:
                 speaker_snapshot: str = diarization.get_speaker_at(utterance_start_time)
                 asyncio.create_task(
                     process_audio_task(
+                        websocket,
                         np.concatenate(voiced_buffer),
                         speaker_snapshot,
                         is_final=True,
@@ -150,7 +160,8 @@ async def process_websocket_bytes(raw_bytes: bytes, websocket: WebSocket) -> Non
         raw_bytes (bytes): The raw_bytes recieved through the websocket
         websocket (Websocket): The websocket connection that was done
     """
-
+    global chunk_counter
+    
     audio_chunk: np.ndarray = np.frombuffer(raw_bytes, np.float32).copy()
 
     loop.run_in_executor(
@@ -161,21 +172,23 @@ async def process_websocket_bytes(raw_bytes: bytes, websocket: WebSocket) -> Non
     chunk_counter += 1
 
     if chunk_counter % 8 == 0 and len(yamnet_buffer) == 16384:
-        async def ps(buf):
-            try:
-                s, sc = await loop.run_in_executor(
-                    sound_executor, transcription.get_sounds, buf
-                )
-                if sc > 0.45 and s not in ["Silence", "Speech"]:
-                    await websocket.send_json({"type": "sound", "sound": s})
-            except:
-                pass
+        if len(yamnet_buffer) == 16384:
+            async def ps(buf):
+                try:
+                    s, sc = await loop.run_in_executor(
+                        sound_executor, transcription.get_sounds, buf
+                    )
+                    if sc > 0.45 and s not in ["Silence", "Speech"]:
+                        await websocket.send_json({"type": "sound", "sound": s})
+                except:
+                    pass
 
-        asyncio.create_task(ps(np.array(yamnet_buffer)))
+            asyncio.create_task(ps(np.array(yamnet_buffer)))
+        chunk_counter = 0
 
-    speech_prob: asyncio.AbstractEventLoop = await loop.run_in_executor(None, transcription.check_vad)
+    speech_prob: asyncio.AbstractEventLoop = await loop.run_in_executor(None, lambda: transcription.check_vad(audio_chunk))
 
     if speech_prob > VAD_THRESHOLD:
-        await procees_speaking(audio_chunk=audio_chunk)
+        await procees_speaking(websocket, audio_chunk)
     else:
-        await process_silence(audio_chunk=audio_chunk)
+        await process_silence(websocket, audio_chunk)

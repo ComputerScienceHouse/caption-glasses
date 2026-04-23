@@ -30,8 +30,8 @@ theme:
     - navigation.search.suggest.terms
     - navigation.search.suggest.results
     - navigation.search.suggest.results.indexes
-  logo: images/jumpstart_half.png
-  favicon: images/jumpstart_small.png
+  logo: images/csh_logo_medium.png
+  favicon: images/csh_logo_small.png
 
 use_directory_urls: false
 

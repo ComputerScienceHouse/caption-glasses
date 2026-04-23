@@ -38,6 +38,7 @@ class WebSocketAudioSource(AudioSource):
     def push_audio(self, chunk: np.ndarray):
         self.stream.on_next(chunk.reshape(1, -1))
 
+
 logger: Logger = getLogger(__name__)
 logger.info("Loading Diart (Pyannote)...")
 
@@ -97,6 +98,7 @@ def get_sounds(audio: np.ndarray) -> tuple[str, np.float32]:
     class_scores: tf.Tensor = tf.reduce_mean(scores, axis=0)
     top_class: tf.Tensor = tf.argmax(class_scores)
     return class_names[top_class], class_scores[top_class].numpy()
+
 
 def get_speaker_at(timestamp: float, max_age: float = 1.5) -> str:
     """

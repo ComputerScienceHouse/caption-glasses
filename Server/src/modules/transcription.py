@@ -33,6 +33,7 @@ vad_model: torch.nn = vad_model.to(device)
 
 logger.info("Loading YAMNet...")
 
+
 def get_speech(audio: ndarray, is_final: bool = True) -> dict[str, str]:
     """
     Processed audio array and returns the resulting audio
@@ -64,6 +65,7 @@ def get_speech(audio: ndarray, is_final: bool = True) -> dict[str, str]:
     text = " ".join([segment.text for segment in segments])
     return {"text": text}
 
+
 def check_vad(audio: ndarray) -> float:
     """
     Processes audio to validate and return the VAD level.
@@ -78,6 +80,8 @@ def check_vad(audio: ndarray) -> float:
         sub_chunks: tf.Tensor = torch.from_numpy(audio).to(device).split(512)
         max_prob: float = 0.0
         for sub in sub_chunks:
+            if sub.shape[0] < 512:  # skip incomplete final chunk
+                continue
             prob = vad_model(sub, SAMPLE_RATE).item()
             max_prob = max(max_prob, prob)
         return max_prob

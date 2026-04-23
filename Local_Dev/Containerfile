@@ -1,0 +1,20 @@
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    portaudio19-dev \
+    libsdl2-dev \
+    libsdl2-image-dev \
+    libsdl2-mixer-dev \
+    libsdl2-ttf-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+
+COPY src/requirements.txt . 
+
+RUN uv pip install --system --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["uv", "run", "src/pygame_listener.py"]
