@@ -24,6 +24,7 @@ from bluezero import device
 # ---------------- BLE UUIDs ----------------
 UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 RX_CHARACTERISTIC_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+MAX_DISPLAY_CHARS = 150
 
 # ---------------- Shared text state ----------------
 caption_lock = threading.Lock()
@@ -32,7 +33,7 @@ current_caption = "Waiting for BLE text..."
 
 def set_caption(new_text: str):
 	global current_caption
-	new_text = new_text.strip()
+	new_text = new_text.strip()[:MAX_DISPLAY_CHARS]
 	if not new_text:
 		return
 	with caption_lock:
