@@ -1,0 +1,20 @@
+# File Path:
+#     /etc/systemd/system/ble_text_display.service
+
+[Unit]
+Description=BLE Text Display
+After=bluetooth.target network.target
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+User=monkey
+WorkingDirectory=/home/monkey
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStartPre=/bin/sleep 10
+ExecStart=/home/monkey/.venv/bin/python /home/monkey/ble_text_display.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
