@@ -14,7 +14,7 @@ from config import SAMPLE_RATE
 
 logger: Logger = getLogger(__name__)
 
-device: bool = "cuda" if torch.cuda.is_available() else "cpu"
+device: str = "cuda" if torch.cuda.is_available() else "cpu"
 compute_type: str = "float16" if device == "cuda" else "int8"
 
 logger.info(f"Loading Whisper using {device.upper()} for transcription.")
@@ -28,7 +28,7 @@ logger.info(f"Loading VAD via torch hub!")
 vad_model, _ = torch.hub.load(
     repo_or_dir="snakers4/silero-vad", model="silero_vad", trust_repo=True
 )
-vad_model: torch.nn = vad_model.to(device)
+vad_model: torch.nn.Module = vad_model.to(device)
 
 
 logger.info("Loading YAMNet...")
