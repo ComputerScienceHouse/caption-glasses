@@ -78,6 +78,8 @@ def check_vad(audio: ndarray) -> float:
         sub_chunks: tf.Tensor = torch.from_numpy(audio).to(device).split(512)
         max_prob: float = 0.0
         for sub in sub_chunks:
+            if sub.shape[0] < 512:
+                sub = torch.nn.functional.pad(sub, (0, 512 - sub.shape[0]))
             prob = vad_model(sub, SAMPLE_RATE).item()
             max_prob = max(max_prob, prob)
         return max_prob

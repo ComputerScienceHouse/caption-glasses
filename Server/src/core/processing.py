@@ -25,7 +25,7 @@ sound_executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=1)
 diart_executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=1)
 
 class WebSocketData:
-    __slots__ = ("connection","uuid","voiced_buffer","is_speaking","is_transcribing","silence_counter","utterance_start_time")
+    __slots__ = ("connection","uuid","voiced_buffer","is_speaking","is_transcribing","silence_counter","utterance_start_time","pre_roll","yamnet_buffer","chunk_counter")
 
     def __init__(self, websocket: WebSocket, uuid: str):
         self.connection: WebSocket = websocket
@@ -210,9 +210,9 @@ async def process_websocket_bytes(raw_bytes: bytes, websocket: WebSocketData) ->
 
         asyncio.create_task(ps(np.array(websocket.yamnet_buffer)))
 
-    speech_prob: asyncio.AbstractEventLoop = await loop.run_in_executor(None, transcription.check_vad)
+    speech_prob: asyncio.AbstractEventLoop = await loop.run_in_executor(None, transcription.check_vad, audio_chunk)
 
     if speech_prob > VAD_THRESHOLD:
         await process_speaking(websocket, audio_chunk)
     else:
-        await process_silence(audio_chunk=audio_chunk)
+        await process_silence(websocket, audio_chunk)
