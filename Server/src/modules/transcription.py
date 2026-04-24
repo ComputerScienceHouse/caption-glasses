@@ -14,7 +14,7 @@ from config import SAMPLE_RATE
 
 logger: Logger = getLogger(__name__)
 
-device: bool = "cuda" if torch.cuda.is_available() else "cpu"
+device: str = "cuda" if torch.cuda.is_available() else "cpu"
 compute_type: str = "float16" if device == "cuda" else "int8"
 
 logger.info(f"Loading Whisper using {device.upper()} for transcription.")
@@ -28,11 +28,10 @@ logger.info(f"Loading VAD via torch hub!")
 vad_model, _ = torch.hub.load(
     repo_or_dir="snakers4/silero-vad", model="silero_vad", trust_repo=True
 )
-vad_model: torch.nn = vad_model.to(device)
+vad_model: torch.nn.Module = vad_model.to(device)
 
 
 logger.info("Loading YAMNet...")
-
 
 def get_speech(audio: ndarray, is_final: bool = True) -> dict[str, str]:
     """
@@ -65,7 +64,6 @@ def get_speech(audio: ndarray, is_final: bool = True) -> dict[str, str]:
     text = " ".join([segment.text for segment in segments])
     return {"text": text}
 
-
 def check_vad(audio: ndarray) -> float:
     """
     Processes audio to validate and return the VAD level.
@@ -80,8 +78,8 @@ def check_vad(audio: ndarray) -> float:
         sub_chunks: tf.Tensor = torch.from_numpy(audio).to(device).split(512)
         max_prob: float = 0.0
         for sub in sub_chunks:
-            if sub.shape[0] < 512:  # skip incomplete final chunk
-                continue
+            if sub.shape[0] < 512:
+                sub = torch.nn.functional.pad(sub, (0, 512 - sub.shape[0]))
             prob = vad_model(sub, SAMPLE_RATE).item()
             max_prob = max(max_prob, prob)
         return max_prob

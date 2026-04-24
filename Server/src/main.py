@@ -38,8 +38,3 @@ app.include_router(endpoints.router)
 @app.get("/", response_class=RedirectResponse)
 async def read_index():
     return RedirectResponse(url="/docs/index.html")
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}

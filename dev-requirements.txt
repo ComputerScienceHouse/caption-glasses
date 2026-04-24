@@ -5,3 +5,4 @@ numpy==1.26.4
 scipy==1.17.1
 pygame==2.6.1
 websockets==16.0
+python-dotenv==1.2.2
