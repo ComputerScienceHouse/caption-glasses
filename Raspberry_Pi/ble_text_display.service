@@ -1,9 +1,5 @@
 # File Path:
 #     /etc/systemd/system/ble_text_display.service
-# Setup Instructions:
-#     sudo systemctl daemon-reload
-#     sudo systemctl restart ble_text_display.service
-
 
 [Unit]
 Description=BLE Text Display

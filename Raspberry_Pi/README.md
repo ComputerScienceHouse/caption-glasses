@@ -13,7 +13,7 @@ This directory contains the Raspberry Pi BLE display app and a `systemd` service
   - Caption text UUID: `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
   - Sound effect UUID: `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
 - Sound effect behavior:
-  - If received text is `Silence` (case-insensitive), nothing is shown.
+  - If received text is `Silence` or `Speech` (case-insensitive), nothing is shown.
   - Any other text is shown above the caption text.
 - Displayed text is capped to 150 characters.
 

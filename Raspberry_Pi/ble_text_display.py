@@ -51,7 +51,7 @@ def set_sound_effect(new_sound: str):
 	global current_sound_effect
 	new_sound = new_sound.strip()[:MAX_DISPLAY_CHARS]
 	with caption_lock:
-		if (not new_sound or new_sound.lower() == "silence"):
+		if (not new_sound or new_sound.lower() == "silence" or new_sound.lower() == "speech"):
 			current_sound_effect = ""
 		else:
 			current_sound_effect = new_sound
