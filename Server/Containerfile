@@ -28,7 +28,7 @@ COPY src/requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/uv \ 
     uv pip install --system \
     torch torchvision torchaudio \
-    --index-url https://download.pytorch.org/whl/cpu && \
+    --index-url https://download.pytorch.org/whl/cu121 && \
     uv pip install --system -r requirements.txt
 
 COPY src/ .

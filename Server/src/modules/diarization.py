@@ -119,3 +119,5 @@ def get_speaker_at(timestamp: float, max_age: float = 1.5) -> str:
             best = spk
             break
     return best or "SPEAKER_00"
+
+pipeline.stream.subscribe(on_diarization_update)
