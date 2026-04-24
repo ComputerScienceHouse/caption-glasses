@@ -13,4 +13,6 @@ services:
       - PHRASE_TIMEOUT=${PHRASE_TIMEOUT}
       - MAX_DURATION=${MAX_DURATION}
       - VAD_THRESHOLD=${VAD_THRESHOLD}
-
+      - TF_FORCE_GPU_ALLOW_GROWTH=true
+    devices:
+      - nvidia.com/gpu=0
