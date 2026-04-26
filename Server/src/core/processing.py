@@ -211,7 +211,7 @@ async def process_websocket_bytes(raw_bytes: bytes, websocket: WebSocketData) ->
                     sound_executor, diarization.get_sounds, buf.flatten()
                 )
                 if sc > 0.45 and s not in ["Silence", "Speech"]:    
-                    await websocket.connection.send_json({"type": "sound", "text": s})
+                    await websocket.connection.send_json({"type": "sound", "text": s, "speaker": ""})
             except:
                 pass
 
