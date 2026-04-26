@@ -15,6 +15,5 @@ services:
       - VAD_THRESHOLD=${VAD_THRESHOLD}
       - TF_FORCE_GPU_ALLOW_GROWTH=true
     devices:
-      - nvidia.com/gpu=0
-
+      - nvidia.com/gpu=${GPU_DEVICE:-0}
 #UNCOMMENT THESE ONLY DURING LOCAL DEV
