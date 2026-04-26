@@ -3,6 +3,7 @@ import numpy as np
 import collections
 from logging import Logger, getLogger
 from pyannote.core import Annotation, Segment
+import noisereduce as nr
 
 import tensorflow as tf
 #this makes tensorflow use CPU only
@@ -46,7 +47,7 @@ logger: Logger = getLogger(__name__)
 logger.info("Loading Diart (Pyannote)...")
 
 diart_config: SpeakerDiarizationConfig = SpeakerDiarizationConfig(
-    duration=2.0, step=0.3, latency="min", sample_rate=SAMPLE_RATE, hf_token=HF_TOKEN
+    duration=4.0, step=0.5, latency="min", sample_rate=SAMPLE_RATE, hf_token=HF_TOKEN
 )
 diarization: SpeakerDiarization = SpeakerDiarization(diart_config)
 
@@ -85,22 +86,64 @@ def on_diarization_update(result: tuple[Annotation] | Annotation) -> None:
         return
 
 
-def get_sounds(audio: np.ndarray) -> tuple[str, np.float32]:
+def get_sounds(audio: np.ndarray) -> list[str]:
     """
-    Processes audio for sounds to be extracted and displayed
-
-    Arguments:
-        audio (ndarray): The audio byte array to be processed
-
-    Returns:
-        str, The highest likely sound effect in the environment
-        float32, The confidence level of the sound effect
+    Processes audio for sounds using category-based deduplication.
     """
+    clean_audio = nr.reduce_noise(
+        y=audio, 
+        sr=SAMPLE_RATE, 
+        stationary=True, 
+        prop_decrease=0.7
+    )
+    scores, _, _ = yamnet_model(clean_audio)
+    class_scores: tf.Tensor = tf.reduce_max(scores, axis=0)
 
-    scores, _, _ = yamnet_model(audio)
-    class_scores: tf.Tensor = tf.reduce_mean(scores, axis=0)
-    top_class: tf.Tensor = tf.argmax(class_scores)
-    return class_names[top_class], class_scores[top_class].numpy()
+    top_indices = tf.argsort(class_scores, direction='DESCENDING')[:15].numpy()
+    
+    category_ranges = {
+        "human": range(0, 67),
+        "animal": range(67, 132),
+        "music": range(132, 277),
+        "natural": range(277, 294),
+        "vehicle": range(294, 348), 
+        "domestic": range(348, 412),
+        "tools": range(412, 420),
+        "explosive": range(420, 456),
+        "misc": range(456, 521)
+    }
+
+    candidates = []
+    for idx in top_indices:
+        label = class_names[idx]
+        score = class_scores[idx].numpy()
+        
+        threshold = 0.45
+        if idx in category_ranges["vehicle"]: threshold = 0.65
+        if idx in category_ranges["natural"]: threshold = 0.6
+
+        if label in ["Silence", "Speech"] or score < threshold:
+            continue
+            
+        assigned_cat = "none"
+        for cat_name, cat_range in category_ranges.items():
+            if idx in cat_range:
+                assigned_cat = cat_name
+                break
+        
+        candidates.append({
+            "label": label,
+            "score": score,
+            "category": assigned_cat
+        })
+
+    final_labels = {}
+    for cand in candidates:
+        cat = cand["category"]
+        if cat not in final_labels or cand["score"] > final_labels[cat]["score"]:
+            final_labels[cat] = cand
+
+    return [item["label"] for item in sorted(final_labels.values(), key=lambda x: x["score"], reverse=True)][:3]
 
 def get_speaker_at(timestamp: float, max_age: float = 1.5) -> str:
     """

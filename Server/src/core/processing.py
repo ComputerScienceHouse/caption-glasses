@@ -1,7 +1,9 @@
 import asyncio
 import collections
+import json
 import time
 import numpy as np
+import noisereduce as nr
 import uuid
 
 from fastapi import WebSocket
@@ -25,7 +27,7 @@ sound_executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=1)
 diart_executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=1)
 
 class WebSocketData:
-    __slots__ = ("connection","uuid","voiced_buffer","is_speaking","is_transcribing","silence_counter","utterance_start_time","pre_roll","yamnet_buffer","chunk_counter")
+    __slots__ = ("connection","uuid","voiced_buffer","is_speaking","is_transcribing","silence_counter","utterance_start_time","pre_roll","yamnet_buffer","chunk_counter", "task")
 
     def __init__(self, websocket: WebSocket, uuid: str):
         self.connection: WebSocket = websocket
@@ -38,8 +40,9 @@ class WebSocketData:
         self.pre_roll: collections.deque = collections.deque(
             maxlen=10
         )
-        self.yamnet_buffer: collections.deque = collections.deque(maxlen=16384)
+        self.yamnet_buffer: collections.deque = collections.deque(maxlen=24000)
         self.chunk_counter: int = 0
+        self.task: str = "transcribe"
 
 async def create_connection(websocket: WebSocket):
     generated_uuid: str = uuid.uuid4()
@@ -49,13 +52,24 @@ async def create_connection(websocket: WebSocket):
     )
 
     client_connection: WebSocketData = WebSocketData(websocket, generated_uuid)
-
     try:
         while True:
-            raw_bytes: bytes = await websocket.receive_bytes()
-            await process_websocket_bytes(
-                raw_bytes, client_connection
-            )
+            message = await websocket.receive()
+            
+            if message["type"] == "websocket.disconnect":
+                break
+
+            if message.get("bytes") is not None:
+                await process_websocket_bytes(message["bytes"], client_connection)
+                
+            elif message.get("text") is not None:
+                try:
+                    data = json.loads(message["text"])
+                    if data.get("type") == "set_task":
+                        client_connection.task = data.get("value", "transcribe")
+                        logger.info(f"Task updated to: {client_connection.task}")
+                except Exception as e:
+                    logger.error(f"Error parsing command: {e}")
     except WebSocketDisconnect as e:
         logger.info(
             f"Disconnected with Client {generated_uuid} at %s", time.monotonic()
@@ -89,11 +103,18 @@ async def process_audio_task(
 
     loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
 
+    clean_audio = await loop.run_in_executor(
+        sound_executor,
+        lambda: nr.reduce_noise(y=audio_data, sr=SAMPLE_RATE, prop_decrease=0.6, stationary=True)
+    )
+
+    clean_audio = np.clip(clean_audio * 1.5, -1.0, 1.0) #Multiply volume so quieter audio/speech is more likely to be picked up
+    
     async with gpu_lock:
         websocket.is_transcribing = True
         try:
             result = await loop.run_in_executor(
-                whisper_executor, transcription.get_speech, audio_data, is_final
+                whisper_executor, transcription.get_speech, clean_audio, is_final, websocket.task
             )
             text = result["text"].strip()
             if text:
@@ -204,19 +225,22 @@ async def process_websocket_bytes(raw_bytes: bytes, websocket: WebSocketData) ->
     websocket.yamnet_buffer.extend(audio_chunk)
     websocket.chunk_counter += 1
 
-    if websocket.chunk_counter % 8 == 0 and len(websocket.yamnet_buffer) == 16384:
+    if websocket.chunk_counter % 8 == 0 and len(websocket.yamnet_buffer) == 24000:
         async def ps(buf):
             try:
-                s, sc = await loop.run_in_executor(
-                    sound_executor, diarization.get_sounds, buf.flatten()
+                detected_labels = await loop.run_in_executor(
+                    sound_executor, diarization.get_sounds, buf
                 )
-                if sc > 0.45 and s not in ["Silence", "Speech"]:    
-                    await websocket.connection.send_json({"type": "sound", "text": s})
-            except:
-                pass
+                
+                if detected_labels:
+                    combined_text = ", ".join(detected_labels)
+                    await websocket.connection.send_json(
+                        {"type": "sound", "text": combined_text, "speaker": ""}
+                    )
+            except Exception as e:
+                logger.error(f"YAMNet Error: {e}")
 
         asyncio.create_task(ps(np.array(websocket.yamnet_buffer)))
-
     speech_prob: asyncio.AbstractEventLoop = await loop.run_in_executor(None, transcription.check_vad, audio_chunk)
 
     if speech_prob > VAD_THRESHOLD:
