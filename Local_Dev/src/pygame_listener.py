@@ -118,7 +118,7 @@ async def receive_text(websocket):
                 state["finals"].pop(0)
 
         elif msg["type"] == "sound":
-            state["sound"] = msg["sound"]
+            state["sound"] = msg["text"]
             state["sound_timestamp"] = pygame.time.get_ticks()
 
 
@@ -218,7 +218,7 @@ async def pygame_loop():
 
 
 async def main():
-    uri = "ws://127.0.0.1:2001/ws"
+    uri = "ws://all-museum-trails-reel.trycloudflare.com/ws"
     try:
         async with websockets.connect(uri) as websocket:
             print("Connected to WebSocket. Launching Pygame UI...")
