@@ -34,3 +34,4 @@ def _get_env_variable(name: str, default: str | None = None) -> str | None:
         return default
     
 DEVICE_CAPTURE_RATE:int = int(_get_env_variable("DEVICE_CAPTURE_RATE","44100")) # Change this to your microphones rates
+WEBSOCKET_URI:str = _get_env_variable("WEBSOCKET_URI","ws://localhost:2001/ws") # Change this to your server's WebSocket URI
