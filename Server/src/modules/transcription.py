@@ -56,7 +56,7 @@ def get_speech(audio: ndarray, is_final: bool = True, task: str = "transcribe") 
 
     use_previous = True if task == "transcribe" else False
     try:
-        segments, _ = speech_model.transcribe(beam = 5 if is_final else 1
+        segments, _ = speech_model.transcribe(
             audio,  # The audio to be processed
             beam_size=beam,  # Search width for the audio. Higher = More accurate but slower
             language="en" if task == "transcribe" else None,
