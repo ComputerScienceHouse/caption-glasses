@@ -16,4 +16,10 @@ services:
       - TF_FORCE_GPU_ALLOW_GROWTH=true
     devices:
       - nvidia.com/gpu=${GPU_DEVICE:-0}
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: CaptionGlassesTunnel
+    command: tunnel --url http://cg_server_run:2001
+    depends_on:
+      - cg_server_run
 #UNCOMMENT THESE ONLY DURING LOCAL DEV
