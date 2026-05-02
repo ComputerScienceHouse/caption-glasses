@@ -47,7 +47,7 @@ logger: Logger = getLogger(__name__)
 logger.info("Loading Diart (Pyannote)...")
 
 diart_config: SpeakerDiarizationConfig = SpeakerDiarizationConfig(
-    duration=4.0, step=0.5, latency="min", sample_rate=SAMPLE_RATE, hf_token=HF_TOKEN
+    duration=3.0, step=1.0, latency="max", sample_rate=SAMPLE_RATE, hf_token=HF_TOKEN, tau_active=0.6
 )
 diarization: SpeakerDiarization = SpeakerDiarization(diart_config)
 
@@ -56,7 +56,7 @@ pipeline: StreamingInference = StreamingInference(diarization, audio_source)
 
 
 speaker_timeline: collections.deque[tuple[float, str]] = collections.deque(
-    maxlen=50
+    maxlen=200
 )  # store recent speaker labels with timestamps
 
 
@@ -99,53 +99,72 @@ def get_sounds(audio: np.ndarray) -> list[str]:
     scores, _, _ = yamnet_model(clean_audio)
     class_scores: tf.Tensor = tf.reduce_max(scores, axis=0)
 
-    top_indices = tf.argsort(class_scores, direction='DESCENDING')[:15].numpy()
-    
+    top_indices = tf.argsort(class_scores, direction='DESCENDING')[:20].numpy()
+
     category_ranges = {
         "human": range(0, 67),
         "animal": range(67, 132),
         "music": range(132, 277),
         "natural": range(277, 294),
-        "vehicle": range(294, 348), 
+        "vehicle": range(294, 348),
         "domestic": range(348, 412),
         "tools": range(412, 420),
         "explosive": range(420, 456),
-        "misc": range(456, 521)
+        "misc": range(456, 521),
     }
+
+    # Per-class floor: below this, ignore. Slightly raised so faint activations do not stack.
+    base_threshold = 0.52
+    vehicle_threshold = 0.68
+    natural_threshold = 0.64
+
+    # After picking the best label per category, only keep a category if it is nearly as
+    # strong as the global winner. That way one real-world sound (often firing several
+    # YAMNet classes in different buckets) usually yields one caption, while two distinct
+    # loud events in the same window can still both appear.
+    secondary_min_ratio = 0.90
 
     candidates = []
     for idx in top_indices:
         label = class_names[idx]
-        score = class_scores[idx].numpy()
-        
-        threshold = 0.45
-        if idx in category_ranges["vehicle"]: threshold = 0.65
-        if idx in category_ranges["natural"]: threshold = 0.6
+        score = float(class_scores[idx].numpy())
 
-        if label in ["Silence", "Speech"] or score < threshold:
+        th = base_threshold
+        if idx in category_ranges["vehicle"]:
+            th = vehicle_threshold
+        if idx in category_ranges["natural"]:
+            th = natural_threshold
+
+        if label in ["Silence", "Speech"] or score < th:
             continue
-            
+
         assigned_cat = "none"
         for cat_name, cat_range in category_ranges.items():
             if idx in cat_range:
                 assigned_cat = cat_name
                 break
-        
-        candidates.append({
-            "label": label,
-            "score": score,
-            "category": assigned_cat
-        })
 
-    final_labels = {}
+        candidates.append(
+            {"label": label, "score": score, "category": assigned_cat}
+        )
+
+    best_per_category: dict[str, dict] = {}
     for cand in candidates:
         cat = cand["category"]
-        if cat not in final_labels or cand["score"] > final_labels[cat]["score"]:
-            final_labels[cat] = cand
+        if cat not in best_per_category or cand["score"] > best_per_category[cat]["score"]:
+            best_per_category[cat] = cand
 
-    return [item["label"] for item in sorted(final_labels.values(), key=lambda x: x["score"], reverse=True)][:3]
+    if not best_per_category:
+        return []
 
-def get_speaker_at(timestamp: float, max_age: float = 1.5) -> str:
+    global_top = max(c["score"] for c in best_per_category.values())
+    floor = global_top * secondary_min_ratio
+
+    kept = [c for c in best_per_category.values() if c["score"] >= floor]
+    kept.sort(key=lambda x: x["score"], reverse=True)
+    return [c["label"] for c in kept[:3]]
+
+def get_speaker_at(timestamp: float, max_age: float = 1.0) -> str:
     """
     Finds the most recent speaker at or before the given timestamp, or 00 if none is found
 
@@ -160,6 +179,8 @@ def get_speaker_at(timestamp: float, max_age: float = 1.5) -> str:
     best: str | None = None
 
     for ts, spk in reversed(speaker_timeline):
+        if timestamp - 1.0 <= ts <= timestamp + max_age:
+            return spk
         if ts <= timestamp + max_age:
             best = spk
             break

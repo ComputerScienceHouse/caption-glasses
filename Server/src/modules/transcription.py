@@ -4,6 +4,7 @@ Contains all of the functions f
 
 import tensorflow as tf
 import torch
+import numpy as np
 
 from numpy import ndarray
 
@@ -19,7 +20,7 @@ compute_type: str = "float16" if device == "cuda" else "int8"
 
 logger.info(f"Loading Whisper using {device.upper()} for transcription.")
 speech_model: WhisperModel = WhisperModel(
-    "deepdml/faster-whisper-large-v3-turbo-ct2",
+    "Systran/faster-whisper-large-v3",
     device=device,
     compute_type=compute_type,
 )
@@ -28,41 +29,53 @@ logger.info(f"Loading VAD via torch hub!")
 vad_model, _ = torch.hub.load(
     repo_or_dir="snakers4/silero-vad", model="silero_vad", trust_repo=True
 )
-vad_model: torch.nn.Module = vad_model.to(device)
+vad_model: torch.nn.Module = vad_model.to("cpu")
 
 
 logger.info("Loading YAMNet...")
 
-def get_speech(audio: ndarray, is_final: bool = True) -> dict[str, str]:
+def get_speech(audio: ndarray, is_final: bool = True, task: str = "transcribe") -> dict[str, str]:
     """
     Processed audio array and returns the resulting audio
 
     Arguments:
         audio (ndarray): The audio byte array to be processed
         is_final (bool): Whether or not the audio is finalized, defaults to true
+        task (str): The task to be performed, either "transcribe" or "translate
 
     Returns:
         dict[str, str]: The dictionary "text" with the returned speech
     """
+    if len(audio) < 1600: 
+        return {"text": ""}
+    
+    if task == "translate":
+        beam = 1
+    else:
+        beam = 5 if is_final else 1  # more accurate for final, faster for partial
 
-    beam: int = 5 if is_final else 1  # more accurate for final, faster for partial
-    segments, _ = speech_model.transcribe(
-        audio,  # The audio to be processed
-        beam_size=beam,  # Search width for the audio. Higher = More accurate but slower
-        language="en",  # English
-        condition_on_previous_text=True,  # Feeds previous inputs for better result
-        temperature=[0.0, 0.2, 0.4],  # Fallback chain for tempature readings
-        vad_filter=True,  # Skip silent regions
-        vad_parameters=dict(
-            min_silence_duration_ms=500, speech_pad_ms=200, threshold=0.2
-        ),
-        no_speech_threshold=0.65,
-        log_prob_threshold=-2.0,
-        compression_ratio_threshold=2.0,
-        repetition_penalty=1.2,
-    )
-    text = " ".join([segment.text for segment in segments])
-    return {"text": text}
+    use_previous = True if task == "transcribe" else False
+    try:
+        segments, _ = speech_model.transcribe(
+            audio,  # The audio to be processed
+            beam_size=beam,  # Search width for the audio. Higher = More accurate but slower
+            language="en" if task == "transcribe" else None,
+            task=task,
+            condition_on_previous_text=use_previous,  # Might feed previous inputs for better result
+            temperature=0.0,
+            vad_filter=True,  # Skip silent regions
+            vad_parameters=dict(
+                min_silence_duration_ms=500, speech_pad_ms=200, threshold=0.3
+            ),
+            no_speech_threshold=0.95,
+            log_prob_threshold=-1.0,
+            compression_ratio_threshold=1.5,
+            repetition_penalty=1.5,
+        )
+        text = " ".join([segment.text for segment in segments])
+        return {"text": text}
+    except (ValueError, RuntimeError) as e:
+        return {"text": ""}
 
 def check_vad(audio: ndarray) -> float:
     """
@@ -75,7 +88,7 @@ def check_vad(audio: ndarray) -> float:
         float: The float level of the VAD
     """
     with torch.no_grad():
-        sub_chunks: tf.Tensor = torch.from_numpy(audio).to(device).split(512)
+        sub_chunks: tf.Tensor = torch.from_numpy(audio).to("cpu").split(512)
         max_prob: float = 0.0
         for sub in sub_chunks:
             if sub.shape[0] < 512:
