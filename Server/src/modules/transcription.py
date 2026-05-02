@@ -20,7 +20,7 @@ compute_type: str = "float16" if device == "cuda" else "int8"
 
 logger.info(f"Loading Whisper using {device.upper()} for transcription.")
 speech_model: WhisperModel = WhisperModel(
-    "Systran/faster-whisper-large-v3",
+    "Systran/faster-distil-whisper-large-v3",
     device=device,
     compute_type=compute_type,
 )
@@ -52,11 +52,11 @@ def get_speech(audio: ndarray, is_final: bool = True, task: str = "transcribe") 
     if task == "translate":
         beam = 1
     else:
-        beam = 5 if is_final else 1  # more accurate for final, faster for partial
+        beam = 3  # more accurate for final, faster for partial
 
     use_previous = True if task == "transcribe" else False
     try:
-        segments, _ = speech_model.transcribe(
+        segments, _ = speech_model.transcribe(beam = 5 if is_final else 1
             audio,  # The audio to be processed
             beam_size=beam,  # Search width for the audio. Higher = More accurate but slower
             language="en" if task == "transcribe" else None,
