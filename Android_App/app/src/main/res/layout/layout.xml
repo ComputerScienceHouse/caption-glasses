@@ -9,7 +9,22 @@
 
     <com.google.android.material.navigation.NavigationView
         android:layout_width="match_parent"
-        android:layout_height="match_parent" >
+        android:layout_height="559dp">
+
+        <EditText
+            android:id="@+id/editTextNumber2"
+            android:layout_width="77dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center|right"
+            android:layout_margin="25dp"
+            android:ems="10"
+            android:hint="Text Size"
+            android:inputType="number"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#949494"
+            android:textSize="12sp"
+            android:translationY="100dp" />
 
         <Button
             android:id="@+id/button4"
@@ -18,8 +33,22 @@
             android:layout_gravity="center"
             android:text="Lost Connention: Reconnect?"
             android:translationY="0dp"
-            android:visibility="visible"
-            tools:visibility="invisible" />
+            android:visibility="invisible"
+            tools:visibility="visible" />
+
+        <EditText
+            android:id="@+id/editTextNumber"
+            android:layout_width="77dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center|left"
+            android:layout_margin="25dp"
+            android:ems="10"
+            android:hint="Text Height"
+            android:inputType="number"
+            android:textAlignment="center"
+            android:textColorHint="#949494"
+            android:textSize="12sp"
+            android:translationY="100dp" />
     </com.google.android.material.navigation.NavigationView>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView

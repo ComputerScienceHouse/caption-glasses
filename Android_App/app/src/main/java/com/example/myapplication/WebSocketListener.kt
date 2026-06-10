@@ -26,9 +26,7 @@ abstract class WebSocketListener(val url: String) : WebSocketListener() {
         println("WebSocket closed: reason=$reason (code: $code)")
     }
 
-    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        println("WebSocket failure: " + t.message + t)
-    }
+    abstract override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?)
     abstract override fun onMessage(webSocket: WebSocket, text: String)
 
 

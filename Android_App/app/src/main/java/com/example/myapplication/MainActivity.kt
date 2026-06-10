@@ -36,10 +36,14 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.AudioRecord.RECORDSTATE_RECORDING
 import android.media.MediaRecorder
+import android.view.View.VISIBLE
+import androidx.core.view.isInvisible
+import androidx.core.view.isVisible
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okhttp3.Response
 import okio.ByteString.Companion.toByteString
 import java.util.UUID
 
@@ -162,6 +166,14 @@ class MainActivity : ComponentActivity() {
 
 
             }
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                println("Websocket Failure: $response")
+                runOnUiThread {
+                    if (reconnectButton.isInvisible) {
+                        reconnectButton.visibility = VISIBLE
+                    }
+                }
+            }
         }
 
        println("Connecting to the server...")
@@ -193,6 +205,11 @@ class MainActivity : ComponentActivity() {
         scanButton.setOnClickListener { v ->
             scanLeDevice(leScanCallback, bluetoothLeScanner)
         }
+
+        reconnectButton.setOnClickListener { v ->
+            websocket = listen(client, request, listener)
+        }
+
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
@@ -213,15 +230,6 @@ class MainActivity : ComponentActivity() {
             scanning = false
             bluetoothLeScanner.stopScan(leScanCallback)
         }
-    }
-
-    private fun getIpAddress() : String? {
-        val connectivityManager = getSystemService(CONNECTIVITY_SERVICE)
-        if (connectivityManager is ConnectivityManager) {
-            val link: LinkProperties = connectivityManager.getLinkProperties(connectivityManager.activeNetwork) as LinkProperties
-            return link.linkAddresses[1].address.hostAddress!!
-        }
-        return null
     }
 
     private suspend fun record(webSocket: WebSocket, audioRecord: AudioRecord) {
@@ -273,18 +281,6 @@ private val gattCallback = object : BluetoothGattCallback() {
     }
 
     override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-//        if (status == BluetoothGatt.GATT_SUCCESS) {
-//            println("Services discovered")
-//
-//            val services = gatt.services
-//            services.forEach { service ->
-//                println("Service: ${service.uuid}")
-//
-//                service.characteristics.forEach { char ->
-//                    println("  Characteristic: ${char.uuid}")
-//                }
-//            }
-//        }
     }
 }
 
