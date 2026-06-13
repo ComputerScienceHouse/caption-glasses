@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="bottom"
+    android:orientation="vertical">
+
+    <com.google.android.material.navigation.NavigationView
+        android:layout_width="match_parent"
+        android:layout_height="559dp">
+
+        <EditText
+            android:id="@+id/editTextNumber2"
+            android:layout_width="77dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center|right"
+            android:layout_margin="25dp"
+            android:ems="10"
+            android:hint="Text Size"
+            android:inputType="number"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#949494"
+            android:textSize="12sp"
+            android:translationY="100dp" />
+
+        <Button
+            android:id="@+id/button4"
+            android:layout_width="128dp"
+            android:layout_height="83dp"
+            android:layout_gravity="center"
+            android:text="Lost Connention: Reconnect?"
+            android:translationY="0dp"
+            android:visibility="invisible"
+            tools:visibility="visible" />
+
+        <EditText
+            android:id="@+id/editTextNumber"
+            android:layout_width="77dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center|left"
+            android:layout_margin="25dp"
+            android:ems="10"
+            android:hint="Text Height"
+            android:inputType="number"
+            android:textAlignment="center"
+            android:textColorHint="#949494"
+            android:textSize="12sp"
+            android:translationY="100dp" />
+    </com.google.android.material.navigation.NavigationView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:layout_width="match_parent"
+        android:layout_height="153dp"
+        android:foregroundGravity="bottom">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="190dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:layout_weight="1"
+            android:rotationX="-1"
+            android:text="No PI"
+            android:textAlignment="center"
+            app:layout_constraintBottom_toTopOf="@+id/button3"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:layout_editor_absoluteX="148dp" />
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="131dp"
+            android:layout_height="102dp"
+            android:layout_gravity="bottom|left"
+            android:layout_margin="10dp"
+            android:layout_weight="1"
+            android:text="Record"
+            app:layout_constraintEnd_toStartOf="@+id/button3"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:layout_editor_absoluteY="314dp" />
+
+        <Button
+            android:id="@+id/button3"
+            android:layout_width="97dp"
+            android:layout_height="102dp"
+            android:layout_gravity="bottom|center"
+            android:layout_margin="10dp"
+            android:layout_weight="1"
+            android:text="Find Devices"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/button" />
+
+        <Button
+            android:id="@+id/button"
+            android:layout_width="131dp"
+            android:layout_height="102dp"
+            android:layout_gravity="bottom|right"
+            android:layout_margin="10dp"
+            android:layout_weight="1"
+            android:text="Stop"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:layout_editor_absoluteY="314dp" />
+
+        <TextView
+            android:id="@+id/textView7"
+            android:layout_width="190dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_margin="10dp"
+            android:text="Server Disconnected"
+            android:textAlignment="center" />
+
+    </com.google.android.material.bottomnavigation.BottomNavigationView>
+
+</LinearLayout>
