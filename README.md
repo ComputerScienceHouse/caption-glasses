@@ -1,5 +1,9 @@
 Caption Glasses are a pair of AR glasses that listen to your surroundings and display live captions directly in your field of view.
 
+Check out the project at:
+- [Open Sauce](https://www.opensauce.com/exhibits/csh-caption-glasses) 
+- [Imagine RIT](https://www.rit.edu/imagine/exhibits/augmented-reality-captioning-glasses)
+
 ## Captioning Process
 ***Below is a flowchart diagram of the captioning process***
 
