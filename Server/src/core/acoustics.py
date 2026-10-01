@@ -83,7 +83,7 @@ class ConnectionAcoustics:
         elif speech_prob < ACOUSTIC_SILENCE_VAD_CUTOFF:
             self.noise_rms_ema = (1.0 - a) * self.noise_rms_ema + a * rms
 
-        base = settings.vad_threshold_base - settings.vad_sensitivity_boost
+        base = settings.vad_threshold_base
         excess = max(0.0, self.noise_rms_ema - 0.012)
         offset = ACOUSTIC_VAD_OFFSET_PER_RMS * excess
         if settings.content_mode == "lyrics":
@@ -92,8 +92,9 @@ class ConnectionAcoustics:
             vad_max = 0.32
         else:
             vad_max = VAD_THRESHOLD_MAX
-        self.effective_vad_threshold = float(
-            np.clip(base + offset, VAD_THRESHOLD_MIN, vad_max)
+        clipped = float(np.clip(base + offset, VAD_THRESHOLD_MIN, vad_max))
+        self.effective_vad_threshold = max(
+            VAD_THRESHOLD_MIN, clipped - settings.vad_sensitivity_boost
         )
 
         cap = max(ACOUSTIC_NOISE_SCORE_CAP_RMS, 1e-6)
