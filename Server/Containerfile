@@ -1,12 +1,20 @@
+ARG BUILD_DOCS=true
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS docbuilder
+ARG BUILD_DOCS
 WORKDIR /docs
 
 COPY mkdocs.yml .
 COPY docs ./docs
 COPY src ./src
 
-RUN uv pip install --no-cache-dir -r ./docs/requirements.txt --system && \
-    zensical build
+RUN --mount=type=cache,target=/root/.cache/uv \
+    if [ "$BUILD_DOCS" = "true" ]; then \
+        uv pip install -r ./docs/requirements.txt --system && \
+        zensical build; \
+    else \
+        mkdir -p site; \
+    fi
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
@@ -17,20 +25,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libc-dev \
     linux-headers-amd64 \
     libsndfile1-dev \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
-COPY src/requirements.txt .
+COPY src/requirements-ml.txt src/requirements.txt ./
 
-# Run that back!
-RUN --mount=type=cache,target=/root/.cache/uv \ 
-    uv pip install --system \
-    torch torchvision torchaudio \
-    --index-url https://download.pytorch.org/whl/cu121 && \
+ENV UV_NATIVE_TLS=1
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 \
+    --index-url https://download.pytorch.org/whl/cu124
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -r requirements-ml.txt
+
+RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system -r requirements.txt
 
 COPY src/ .
 COPY --from=docbuilder /docs/site /src/docs
-    
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "2001","--log-config", "/src/logging_config.yaml"]
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--log-config", "/src/logging_config.yaml"]

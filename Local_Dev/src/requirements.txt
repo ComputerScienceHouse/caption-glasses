@@ -1,5 +1,7 @@
+dotenv==0.9.9
 pygame==2.6.1
 websockets==16.0
 pyaudio==0.2.14
 numpy==2.4.4
 scipy==1.17.1
+python-dotenv==1.2.2

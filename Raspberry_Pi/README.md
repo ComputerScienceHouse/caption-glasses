@@ -3,6 +3,7 @@
 This directory contains the Raspberry Pi BLE display app and a `systemd` service unit.
 
 - App script: `ble_text_display.py`
+- Icon font: `fa-solid-900.ttf` (Font Awesome 5 Free Solid, used for SFX chip icons)
 - Service file: `ble_text_display.service`
 
 ## Python App:
@@ -13,8 +14,10 @@ This directory contains the Raspberry Pi BLE display app and a `systemd` service
   - Caption text UUID: `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
   - Sound effect UUID: `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
 - Sound effect behavior:
-  - If received text is `Silence` or `Speech` (case-insensitive), nothing is shown.
-  - Any other text is shown above the caption text.
+  - Sound effects are rendered as rounded chips with a category icon and label.
+  - The payload can be the server's JSON shape (`{"labels": [{"label": ..., "category": ...}, ...]}` or a bare JSON list), or plain comma-separated text.
+  - `Silence` and `Speech` labels (case-insensitive) are ignored and clear any visible chips.
+  - Chips disappear automatically after 3.5 seconds.
 - Displayed text is capped to 150 characters.
 
 ## Pi Setup
@@ -34,9 +37,10 @@ pip install --upgrade pip
 pip install bluezero pygame
 ```
 
-3. Copy the app script to the expected runtime path:
+3. Copy the app script and icon font to the expected runtime path:
 ```bash
 cp /path/to/repo/Raspberry_Pi/ble_text_display.py /home/monkey/ble_text_display.py
+cp /path/to/repo/Raspberry_Pi/fa-solid-900.ttf /home/monkey/fa-solid-900.ttf
 ```
 
 ## Run Manually (Dev/Test)

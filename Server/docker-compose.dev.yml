@@ -1,0 +1,7 @@
+services:
+  cg_server_run:
+    build:
+      args:
+        BUILD_DOCS: "false"
+    volumes:
+      - ./src:/src

@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.template
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.git/
+docs/_build/
+site/

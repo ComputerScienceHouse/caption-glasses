@@ -7,7 +7,6 @@ load_dotenv()
 logger: logging.Logger = logging.getLogger(__name__)
 
 def _get_env_variable(name: str, default: str | None = None) -> str | None:
-
     """
     Retrieves an environment variable, with an optional default value.
 
@@ -32,6 +31,20 @@ def _get_env_variable(name: str, default: str | None = None) -> str | None:
     except Exception as e:
         logger.error(f"Error retrieving environment variable '{name}': {e}")
         return default
-    
-DEVICE_CAPTURE_RATE:int = int(_get_env_variable("DEVICE_CAPTURE_RATE","44100")) # Change this to your microphones rates
-WEBSOCKET_URI:str = _get_env_variable("WEBSOCKET_URI","ws://localhost:2001/ws") # Change this to your server's WebSocket URI
+
+
+def _parse_capture_rate(raw: str | None) -> int | None:
+    """None means auto-detect from the default input device at runtime."""
+    if raw is None:
+        return None
+    text = str(raw).strip().lower()
+    if text in ("", "auto"):
+        return None
+    return int(text)
+
+
+#Set to a number to force a rate, or "auto" / empty to detect from the mic.
+DEVICE_CAPTURE_RATE: int | None = _parse_capture_rate(
+    _get_env_variable("DEVICE_CAPTURE_RATE", "auto")
+)
+WEBSOCKET_URI: str = _get_env_variable("WEBSOCKET_URI", "ws://localhost:8080/ws")
