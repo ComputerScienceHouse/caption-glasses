@@ -39,11 +39,11 @@ pip install -r dev-requirements.txt
 
 Clients connect to `ws://<host>:8080/ws`. The connection carries two kinds of messages:
 
-### Binary frames (client → server)
+### Binary frames (client -> server)
 
 Raw microphone audio chunks (float32 or int16). These are processed for transcription and are not JSON.
 
-### Text frames (client → server)
+### Text frames (client -> server)
 
 Commands are sent as one JSON object per text frame (multiple objects back-to-back in one frame are also supported). Each object must include a `"type"` field.
 
@@ -96,7 +96,7 @@ Set `WHISPER_MODEL` in `Server/.env` (see `Server/.env.template`). The model loa
 | `distil-large-v3` | Distilled | Very fast | High (EN) | EN-focused; weaker multilingual |
 | `Systran/faster-distil-whisper-large-v3` | Distilled large | Faster than full large | Near large-v3 | **Default** — multilingual + translate; best live-caption tradeoff |
 
-Multilingual models support `task=translate` (non-English speech → English). `*.en` models cannot. Distilled models trade a little accuracy for lower latency and VRAM.
+Multilingual models support `task=translate` (non-English speech -> English). `*.en` models cannot. Distilled models trade a little accuracy for lower latency and VRAM.
 
 #### Speech / caption sliders
 
@@ -116,7 +116,7 @@ These map to the **Live tuning** sliders in the pygame client.
 | `speaker_lookback_sec` | Speaker speed | `0.35` | `0.15`–`0.75` | How far back (seconds) to look in the diarization timeline when attaching a speaker label. Lower = reacts faster to speaker changes. |
 | `speaker_reset_sec` | Reset speakers | `45` | `20`–`120` | Seconds of silence before the speaker timeline resets (next speech may be labeled as speaker 1 again). |
 
-Example — softer speech, longer lines:
+Example for softer speech and longer lines:
 
 ```json
 {"type": "set_settings", "value": {
@@ -150,50 +150,7 @@ Example — more aggressive SFX detection:
 }}
 ```
 
-Use `set_yamnet_profile` with `"media"` to apply a built-in SFX preset similar to the above without tuning each slider manually.
-
-#### Additional settings (no pygame slider)
-
-These are accepted by `set_settings` but are not exposed as sidebar sliders. They are set automatically by `set_mode` (e.g. `lyrics`) or can be patched directly.
-
-| Key | Default | What it does |
-|-----|---------|--------------|
-| `content_mode` | `"speech"` | `"speech"` for conversation, `"lyrics"` for singing mode. Use `set_mode` with `"lyrics"` instead of setting this directly. |
-| `skip_denoise` | `false` | When `true`, skips noise reduction before transcription (lyrics mode). |
-| `whisper_vad_filter` | `true` | When `true`, Whisper’s internal VAD trims silence before decoding. Set `false` for lyrics mode. |
-| `segment_min_logprob_partial` | `-0.9` | Confidence filter for partial captions (same idea as `segment_min_logprob_final`). |
-| `segment_max_no_speech_final` | `0.82` | Drops segments Whisper thinks are non-speech (finals). Lower = stricter. |
-| `segment_max_no_speech_partial` | `0.65` | Same for partial captions. |
-
-Example — lyrics-style processing without switching the full lyrics preset:
-
-```json
-{"type": "set_settings", "value": {
-  "content_mode": "lyrics",
-  "skip_denoise": true,
-  "whisper_vad_filter": false,
-  "phrase_timeout_sec": 1.5,
-  "max_utterance_sec": 14.0
-}}
-```
-
-#### Mode presets
-
-| Mode | Intended use |
-|------|----------------|
-| `balanced` | Default — resets all settings to baseline defaults. |
-| `soft_speech` | Quiet talkers; lower volume floor, higher VAD sensitivity, wider final beam. |
-| `noisy_hall` | Reverberant / noisy rooms; moderate VAD boost and stricter segment filtering. |
-| `accuracy` | Slower, higher-quality finals; longer lines, higher beams, tighter speaker lookback. |
-| `lyrics` | Singing; disables denoise and Whisper VAD, longer lines, music-friendly SFX thresholds. |
-
-```json
-{"type": "set_mode", "value": "accuracy"}
-```
-
-`set_settings` accepts any key from `SessionSettings` in `Server/src/core/session_settings.py`. Slider keys and labels are defined in `Local_Dev/src/client/tuning_specs.py`.
-
-### Text frames (server → client)
+### Text frames (server -> client)
 
 | `type` | Description |
 |--------|-------------|
