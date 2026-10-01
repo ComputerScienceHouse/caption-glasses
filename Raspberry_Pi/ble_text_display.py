@@ -39,17 +39,17 @@ SFX_CATEGORY_IDS = (
 )
 
 #From Font Awesome 5 Free Solid
-SFX_CATEGORY_ICONS = {
-	"human": "\uf007",
-	"animal": "\uf1b0",
-	"music": "\uf001",
-	"natural": "\uf06c",
-	"vehicle": "\uf1b9",
-	"domestic": "\uf015",
-	"tools": "\uf0ad",
-	"explosive": "\uf0e7",
-	"tones": "\uf028",
-	"ambient": "\uf0c2",
+SFX_CATEGORY_ICONS: dict[str, str] = {
+    "human": "\uf007",
+    "animal": "\uf1b0",
+    "music": "\uf001",
+    "natural": "\uf06c",
+    "vehicle": "\uf1b9",
+    "domestic": "\uf015",
+    "tools": "\uf0ad",
+    "explosive": "\uf0e7",
+    "tones": "\uf028",
+    "ambient": "\uf0c2",
 }
 
 SFX_CATEGORY_STYLES = {

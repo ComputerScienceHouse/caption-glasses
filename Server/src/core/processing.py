@@ -207,7 +207,6 @@ class WebSocketData:
         "yamnet_buffer",
         "chunk_counter",
         "task",
-        "profanity_filter_enabled",
         "yamnet_profile",
         "sfx_enabled_categories",
         "caption_env_telemetry",
@@ -246,7 +245,6 @@ class WebSocketData:
         )
         self.chunk_counter: int = 0
         self.task: str = "transcribe"
-        self.profanity_filter_enabled: bool = PROFANITY_FILTER_DEFAULT
         self.yamnet_profile: str = "default"
         self.sfx_enabled_categories: set[str] = set(YAMNET_CATEGORY_IDS)
         self.caption_env_telemetry: bool = False
@@ -271,6 +269,25 @@ class WebSocketData:
         self.translate_source_lang: str | None = None
         self.rollover_skip_chunks: int = 0
         self.prefer_final: bool = False
+
+_connections: set[WebSocketData] = set()
+_profanity_filter_enabled: bool = PROFANITY_FILTER_DEFAULT
+
+
+def _telemetry_enabled(websocket: WebSocketData) -> bool:
+    return (
+        CAPTION_ENV_TELEMETRY
+        or websocket.caption_env_telemetry
+        or any(c.caption_env_telemetry for c in _connections)
+    )
+
+
+async def _broadcast_json(payload: dict) -> None:
+    for client in tuple(_connections):
+        try:
+            await client.connection.send_json(payload)
+        except Exception:
+            _connections.discard(client)
 
 
 def _merge_stable_partial(
@@ -366,8 +383,9 @@ async def handle_client_command(data: dict, client: WebSocketData) -> None:
         client.translate_source_lang = None
         logger.info("Task updated to: %s", client.task)
     elif cmd == "set_profanity_filter":
-        client.profanity_filter_enabled = bool(data.get("value", False))
-        logger.info("Profanity filter: %s", client.profanity_filter_enabled)
+        global _profanity_filter_enabled
+        _profanity_filter_enabled = bool(data.get("value", False))
+        logger.info("Profanity filter: %s", _profanity_filter_enabled)
     elif cmd == "set_yamnet_profile":
         p = data.get("value", "default")
         if isinstance(p, str) and p.strip():
@@ -483,10 +501,10 @@ async def _session_maintenance(websocket: WebSocketData) -> None:
     await loop.run_in_executor(sound_executor, _gpu_cleanup)
 
 async def _send_telemetry(websocket: WebSocketData, speech_prob: float) -> None:
-    if not (CAPTION_ENV_TELEMETRY or websocket.caption_env_telemetry):
+    if not _telemetry_enabled(websocket):
         return
     ac = websocket.acoustics
-    await websocket.connection.send_json(
+    await _broadcast_json(
         {
             "type": "telemetry",
             "env": ac.env_bucket,
@@ -550,17 +568,18 @@ async def _send_caption_message(
         payload["language"] = lang
     if revise and msg_type == "final":
         payload["revise"] = True
-    if CAPTION_ENV_TELEMETRY or websocket.caption_env_telemetry:
+    if _telemetry_enabled(websocket):
         payload["env"] = websocket.acoustics.env_bucket
         payload["noise_score"] = round(float(websocket.acoustics.noise_score), 3)
         payload["content_mode"] = websocket.settings.content_mode
-    await websocket.connection.send_json(payload)
+    await _broadcast_json(payload)
 
 async def create_connection(websocket: WebSocket) -> None:
     generated_uuid: str = str(uuid.uuid4())
     logger.info("Established connection with Client %s", generated_uuid)
 
     client_connection = WebSocketData(websocket, generated_uuid)
+    _connections.add(client_connection)
     try:
         while True:
             message = await websocket.receive()
@@ -588,6 +607,8 @@ async def create_connection(websocket: WebSocket) -> None:
         logger.info("Disconnected with Client %s", generated_uuid)
     except Exception as e:
         logger.error("Error: %s: %s", type(e).__name__, e)
+    finally:
+        _connections.discard(client_connection)
 
 async def process_audio_task(
     websocket: WebSocketData,
@@ -676,7 +697,7 @@ async def process_audio_task(
                     websocket.last_partial_language = lang
                 return
             text = profanity_filter.mask_caption_text(
-                text, websocket.profanity_filter_enabled
+                text, _profanity_filter_enabled
             )
             if not text:
                 return
@@ -697,7 +718,7 @@ async def process_audio_task(
             return
 
         text = profanity_filter.mask_caption_text(
-            text, websocket.profanity_filter_enabled
+            text, _profanity_filter_enabled
         )
         if not text:
             if revise and provisional:
@@ -836,7 +857,7 @@ async def _flush_utterance(
         provisional_lang = websocket.last_partial_language
         if provisional:
             masked = profanity_filter.mask_caption_text(
-                provisional, websocket.profanity_filter_enabled
+                provisional, _profanity_filter_enabled
             )
             if masked:
                 await _send_caption_message(
@@ -993,7 +1014,7 @@ async def process_websocket_bytes(raw_bytes: bytes, websocket: WebSocketData) ->
                         )
                         if to_send:
                             combined_text = ", ".join(d["label"] for d in to_send)
-                            await ws.connection.send_json(
+                            await _broadcast_json(
                                 {
                                     "type": "sound",
                                     "text": combined_text,
@@ -1022,9 +1043,7 @@ async def process_websocket_bytes(raw_bytes: bytes, websocket: WebSocketData) ->
     ):
         asyncio.create_task(_session_maintenance(websocket))
 
-    if websocket.chunk_counter % 4 == 0 and (
-        CAPTION_ENV_TELEMETRY or websocket.caption_env_telemetry
-    ):
+    if websocket.chunk_counter % 4 == 0 and _telemetry_enabled(websocket):
         await _send_telemetry(websocket, speech_prob)
 
     if is_speech:
